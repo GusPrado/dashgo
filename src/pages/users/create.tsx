@@ -12,9 +12,13 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import Link from 'next/link';
+import { QueryClient, useMutation } from '@tanstack/react-query';
 import { Input } from '../../components/Form/Input';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/Sidebar';
+import { api } from '../../services/api';
+import { queryClient } from '../../services/queryClient';
+import { useRouter } from 'next/router';
 
 type CreateUserFormData = {
   name: string;
@@ -37,6 +41,25 @@ const createUserFormSchema = yup.object().shape({
 });
 
 export default function UserCreate() {
+  const router = useRouter();
+  const createUser = useMutation(
+    async (user: CreateUserFormData) => {
+      const response = await api.post('users', {
+        user: {
+          ...user,
+          created_at: new Date(),
+        },
+      });
+
+      return response.data.user;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['users']);
+      },
+    }
+  );
+
   const { register, handleSubmit, formState } = useForm({
     resolver: yupResolver(createUserFormSchema),
   });
@@ -44,7 +67,10 @@ export default function UserCreate() {
   const handleCreateUser: SubmitHandler<CreateUserFormData> = async (
     formValues
   ) => {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // await new Promise((resolve) => setTimeout(resolve, 2000));
+    await createUser.mutateAsync(formValues);
+
+    router.push('/users');
   };
 
   const { errors } = formState;
